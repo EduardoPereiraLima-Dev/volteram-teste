@@ -1,23 +1,21 @@
-
 <script>
-    import {page} from '$app/stores';
-    import {goto} from '$app/navigation';
+    import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
-    import {oncleanup} from 'svelte';
 
-    /** @type {import('./$types').PageData}*/
-    let {data} = $props();
+    /** @type {import('./$types').PageData} */
+    let { data } = $props();
 
-    let inputValue = data.name || '';
-    let debounceTimer = null;
-    let isLoading = false;
-    let currentResults = data.results || [];
-    let currentError = data.error || null;
+    let inputValue = $state(data.name || '');
+    let debounceTimer = $state(null);
+    let isLoading = $state(false);
+    let currentResult = $state(data.result);
+    let currentError = $state(data.error);
 
-    //função de cunsulta
+    // Função para fazer a consulta à API
     async function fetchNameData(name) {
-        if (!name) {
-            currentResults = [];
+        if (!name || name.trim() === '') {
+            currentResult = null;
             currentError = null;
             return;
         }
@@ -26,92 +24,135 @@
         currentError = null;
 
         try {
-            const response = await fetch(`/api/name/${name}`);
+            const response = await fetch(`https://api.agify.io/?name=${encodeURIComponent(name.trim())}`);
+            
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const results = await response.json();
-            currentResults = results;
+
+            const result = await response.json();
+            currentResult = result;
         } catch (error) {
-            currentError = error.message;
-            currentResults = [];
+            console.error('Error fetching data:', error);
+            currentResult = null;
+            currentError = 'Erro ao consultar a API';
         } finally {
             isLoading = false;
-            currentError = null;
-
-            try {
-                const response = await fetch(`https://api.agify.io/?name=${encodeURIComponent(name.trim())}`);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const results = await response.json();
-                currentResults = results;
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                currentResults = null;
-                currentError = 'Erro de consulta';
-            }finally {
-                isLoading = false;
-            }
         }
     }
-     //funç~ao de debounce
-     function handleInput(event) {
+
+    // Função de debounce para input
+    function handleInput(event) {
         inputValue = event.target.value;
-        // Limpa o debounce anterior
+        
+        // Limpa o timer anterior
         if (debounceTimer) {
             clearTimeout(debounceTimer);
         }
-        // Define um novo debounce
+        
+        // Define novo timer para debounce
         debounceTimer = setTimeout(async () => {
-        const trimmedValue = inputValue.trim();
-        //atualiza a url
-        if (browser) {
-            if (trimmedValue === '') {
-                 goto('/', { replaceState: true });
-            } else {
-             goto(`/?name=${encodeURIComponent(trimmedValue)}`, { replaceState: true });
+            const trimmedValue = inputValue.trim();
+            
+            // Atualiza a URL
+            if (browser) {
+                if (trimmedValue === '') {
+                    goto('/', { replaceState: true });
+                } else {
+                    goto(`/?name=${encodeURIComponent(trimmedValue)}`, { replaceState: true });
+                }
             }
-        }
-        // Chama a função de consulta automática
-        await fetchNameData(trimmedValue);
-        }, 750); // 300ms de debounce
+            
+            // Faz a consulta após o debounc
+            await fetchNameData(trimmedValue);
+        }, 750); // 350ms de debounce
     }
-    // inicia dados da url 
+
+    // Limpa o timer de debounce ao desmontar o componente
+    $effect(() => {
+        return () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+        };
+    });
+
+    // Inicia a consulta se houver um nome na URL
     $effect(() => {
         if (data.result) {
-            currentResults = data.result;
+            currentResult = data.result;
         }
         if (data.error) {
             currentError = data.error;
         }
     });
-
-       
-
 </script>
 
 <svelte:head>
-    <title>Voltera Frontend Test</title>
+    <title>Consulta de Idade por Nome</title>
+    <meta name="description" content="Descubra a idade estimada baseada no nome usando a API Agify" />
 </svelte:head>
 
 <main>
-    <div class= "conteiner">
+    <div class="container">
         <header>
-            <h1>Consulta de idade por nome</h1>
-            <p>Digite um nome para consultar a idade média associada a ele.</p>
-
+            <h1>Consulta de Idade por Nome</h1>
+            <p>Digite um nome para descobrir a idade estimada</p>
         </header>
+
         <section class="search-section">
-            <div class="input-conteiner">
+            <div class="input-container">
+                <label for="name-input" class="visually-hidden">Nome para consulta</label>
+                <input
+                    id="name-input"
+                    type="text"
+                    placeholder="Digite um nome..."
+                    value={inputValue}
+                    oninput={handleInput}
+                    autocomplete="given-name"
+                />
+            </div>
+        </section>
+
+        <section class="results-section">
+            {#if isLoading}
+                <div class="loading-card">
+                    <div class="loading-spinner"></div>
+                    <p>Consultando...</p>
+                </div>
                 
-            </div>
-
-            </div>
+            {:else if currentResult}
+                <div class="result-card">
+                    <h2>Resultado para "{currentResult.name}"</h2>
+                    {#if currentResult.age}
+                        <div class="age-info">
+                            <span class="age-number">{currentResult.age}</span>
+                            <span class="age-label">anos (estimativa)</span>
+                        </div>
+                        {#if currentResult.count}
+                            <p class="confidence">
+                                Baseado em {currentResult.count.toLocaleString()} registros
+                            </p>
+                        {/if}
+                    {:else}
+                        <div class="no-data">
+                            <p>Não foi possível estimar a idade para este nome.</p>
+                        </div>
+                    {/if}
+                </div>
+            {:else if currentError}
+                <div class="error-card">
+                    <p>{currentError}</p>
+                </div>
+            {:else if inputValue.trim() === ''}
+                <div class="placeholder-card">
+                    <p>Digite um nome para começar a consulta</p>
+                </div>
+            {/if}
         </section>
-
-        </section>
-    </div>
-
     </div>
 </main>
+
+<style>
+    /* Estilos CSS */
+</style>
