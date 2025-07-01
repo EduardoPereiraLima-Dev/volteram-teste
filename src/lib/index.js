@@ -1,43 +1,44 @@
-// ultilidades da para o teste 
+// Utilitários para a aplicação
+
 /**
- * função de debounce
- * @param {Function} func - função a ser executada
- * @param {number} wait - tempo de espera em milissegundos
- * @returns {Function} - função debounced
+ * Função de debounce para limitar a frequência de execução
+ * @param {Function} func - Função a ser executada
+ * @param {number} wait - Tempo de espera em millisegundos
+ * @returns {Function} Função com debounce aplicado
  */
 export function debounce(func, wait) {
-  let timeout;
-  return function(...args) {
-    const leter = () => {
-      clearTimeout(timeout);
-      func(...args);
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
   }
-    clearTimeout(timeout);
-    timeout = setTimeout(leter, wait);
-  };
 }
 
 /**
- * valida nomes para consultas
- * @param {string} name - nome a ser validado
- * @returns {boolean} - true se o nome for válido, false caso contrário
- * 
-*/
+ * Valida se um nome é válido para consulta
+ * @param {string} name - Nome a ser validado
+ * @returns {boolean} True se o nome é válido
+ */
 export function isValidName(name) {
-  return typeof name === 'string' && name.trim() !== '';
+  return typeof name === "string" && name.trim().length > 0
 }
 
 /**
- * formatando o resultado da consulta
- * @param {Object} result - resultados da consulta
- * @returns {Object} - objeto formatado com nome e idade
+ * Formata o resultado da API para exibição
+ * @param {Object} result - Resultado da API Agify
+ * @returns {Object} Resultado formatado
  */
 export function formatResult(result) {
-  if (!result) return null;
+  if (!result) return null
+
   return {
-    name: result.name || '',
+    name: result.name || "",
     age: result.age || null,
     count: result.count || 0,
-    probability: result.probability || 0,
-  };
+    hasData: result.age !== null && result.age !== undefined,
+  }
 }

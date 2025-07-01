@@ -1,8 +1,8 @@
 /**  @type {import('./$types').PageLoad} */
 
 export async function load({url, fetch}) {
-	const name = url.searchParams.get('name')
-	if (!name || name.thim() === '') {
+	const name = url.searchParams.get("name")
+	 if (!name || name.thim() === '') {
 		return {
 			name: "",
 			result: null,
@@ -13,12 +13,14 @@ export async function load({url, fetch}) {
 	if (!response.ok) {
 		throw new Error(`HTTP error! status: ${response.status}`);	
   }
+  // console.log(response);
   const data = await response.json();
+ //	console.log(data);
   return {
 	name: name.trim(),
 	result: data,
   }
-  } catch (error) {
+ } catch (error) {
 	console.error('Error fetching data:', error);
 	return {
 		name: "",
@@ -29,4 +31,5 @@ export async function load({url, fetch}) {
   }
   
 }
-// console.log("Page load function executed");
+// console.log("Page load function executed");olteran-teste\voltera-frontend-test\src\routes> node +page.js
+//Page load function executed
